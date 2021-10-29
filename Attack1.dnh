@@ -1,0 +1,139 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+
+let frame = 0;
+let frame2 = 0;
+
+let base_angle2 = 0;
+let base_angle = 0;
+let current_wave = 0;
+
+let difficulty;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+}
+
+@MainLoop
+{
+	let period = 11 - difficulty;
+	let base_angle_inc = 4;
+	let threads = 9;
+	let speed = 3.5 + difficulty * 0.75;
+
+	let period2 = 24 - difficulty * 2;
+	let base_angle_inc2 = 29;
+	let wall_length = 3;
+
+	if(difficulty == 2)
+	{
+		wall_length = 4;
+	}
+
+	let wall_spacing = 8 - difficulty;
+	let threads2 = 3;
+	let speed2 = 3 + difficulty * 0.5;
+	let wave_count = 3;
+	let wave_delay = 75 - difficulty * 15;
+
+	frame++;
+	frame2++;
+
+	let px = GetPlayerX();
+	let py = GetPlayerY();
+
+	let ex = ObjMove_GetX(objEnemy);
+	let ey = ObjMove_GetY(objEnemy);
+
+	let w = GetStgFrameWidth();
+	let h = GetStgFrameHeight();
+	
+	let cx = w / 2;
+	let cy = h / 2;
+
+	if(frame > period)
+	{
+		let angle_inc = 360 / threads;
+		let angle = base_angle;
+		loop(threads)
+		{
+			CreateShotA1(ex, ey, speed, angle, CS_LARGE_BUTTERFLY, 10);
+			CreateShotA1(ex, ey, speed, -angle, CS_LARGE_BUTTERFLY, 10);
+
+			PlaySound("Shot1", 10, 40);
+
+			angle += angle_inc;
+		}
+
+		base_angle += base_angle_inc;
+		frame = 0;
+	}
+
+	if(frame2 > period2)
+	{
+		Walls(ex, ey, threads, wall_length, wall_spacing, base_angle2, speed2, CS_SMALL_BUTTERFLY, 10);
+		PlaySound("Shot2", 10, 40);
+
+		base_angle2 += base_angle_inc2;
+		frame2 = 0;
+
+		current_wave++;
+		if(current_wave >= wave_count)
+		{
+			current_wave = 0;
+			frame2 = -wave_delay;
+		}
+	}
+
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}

@@ -1,0 +1,217 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+let aim_length;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+
+	ContinuedAimedShots();
+}
+
+@MainLoop
+{
+
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	aim_length = 100 + difficulty * 30;
+
+	yield;
+}
+
+task ContinuedAimedShots()
+{
+	Wait(30);
+
+	let gap = 90;
+	let period = 30;
+
+	AimedShots(w - 100, 100);
+
+	Wait(aim_length + gap);
+
+	AimedShots(100, 100);
+
+	Wait(aim_length);
+
+	Bursts();
+}
+
+task Bursts()
+{
+	Wait(10);
+
+	let period = 24 - difficulty * 4;
+
+	let speed = 2;
+	let speed2 = 1.5;
+	let threads = 18 + difficulty * 4;
+
+	let graphic = CS_LARGE_BUTTERFLY;
+	let graphic2 = CS_SMALL_BUTTERFLY;
+
+	let ang_vel = 1;
+	let ang_change = 65;
+
+	let stop_delay = 10 + ang_change / ang_vel;
+
+	let burst_count = 10;
+
+	let direction = 1;
+
+	let angle = 0;
+
+	loop(burst_count)
+	{
+		ShootThreadsAng(threads, ex, ey, speed, angle, ang_vel * direction, stop_delay, graphic, 10);
+		ShootThreadsAng(threads, ex, ey, speed2, angle, ang_vel * -direction, stop_delay, graphic2, 10);
+
+		direction *= -1;
+
+		angle += 360 / threads / 2.67851;
+
+		Wait(period);
+	}
+
+	Wait(80 + difficulty * 10);
+
+	ContinuedAimedShots();
+}
+
+function ShootThreadsAng(threads, x, y, speed, angle, ang_vel, stop_delay, graphic, delay)
+{
+	let angle_inc = 360 / threads;
+
+	PlaySound("Shot1", delay, 40);
+
+	loop(threads)
+	{
+		let bullet = CreateShotA1(x, y, speed, angle, graphic, delay);
+		ObjMove_SetAngularVelocity(bullet, ang_vel);
+		StopTurn(bullet, stop_delay);
+
+		angle += angle_inc;
+	}
+}
+
+task StopTurn(bullet, delay)
+{
+	Wait(delay);
+	
+	ObjMove_SetAngularVelocity(bullet, 0);
+}
+
+task AimedShots(x, y)
+{
+	let graphic = CS_LARGE_BUTTERFLY;
+
+	let init_speed = 0.2;
+	let max_speed = 9;
+	let accel = 0.2;
+	let variance = 50;
+	let period = 1;
+	let count = aim_length / period;
+
+	loop(count)
+	{
+		let angle = rand(0, 360);
+		let r = rand(0, variance);
+
+		let bx = x + cos(angle) * r;
+		let by = y + sin(angle) * r;
+
+		let aim_angle = rand(0, 360);
+		let aim_r = rand(0, variance);
+
+		let aim_x = GetPlayerX() + cos(angle) * r;
+		let aim_y = GetPlayerY() + sin(angle) * r;
+
+		PlaySound("Shot1", 10, 40);
+
+		let bullet2 = CreateShotA1(bx, by, init_speed, AngleTo(bx, by, aim_x, aim_y), CS_SMALL_BUTTERFLY, 10);
+		ObjMove_SetAcceleration(bullet2, accel);
+		ObjMove_SetMaxSpeed(bullet2, rand(0.5, 6));
+
+		let bullet = CreateShotA1(bx, by, init_speed, AngleTo(bx, by, aim_x, aim_y), graphic, 10);
+		ObjMove_SetAcceleration(bullet, accel);
+		ObjMove_SetMaxSpeed(bullet, max_speed);
+
+		Wait(period);
+	}
+}

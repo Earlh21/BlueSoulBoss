@@ -1,0 +1,204 @@
+#TouhouDanmakufu[Player]
+#ScriptVersion[3]	
+#ID["Genocide Frisk"]
+#Title["Genocide Frisk"]
+#Text["Win no matter what."]
+#Image["./bigheart_dark.png"]
+#ReplayName["Frisk"]
+#include "./FriskFunctions.dnh"
+#include "./FightFunctions.dnh"
+
+let objPlayer = GetPlayerObjectID();
+let objSlowShot = ID_INVALID;
+let current = GetCurrentScriptDirectory();
+let render = true;
+let broken = false;
+let deathx = 0;
+let deathy = 0;
+let shakeoffsetx = 0;
+let shakeoffsety = 0;
+
+let fight_x = -1;
+let fight_y = -1;
+let fight_visible = false;
+let fight_respawn = 300;
+
+let damagemin=5500;
+let damagemax=8500;
+let wascol = false;
+
+@Initialize
+{
+	SetForbidPlayerSpell(true);
+	ObjPlayer_AddIntersectionCircleA1(objPlayer, 1, 0, 1, 20);
+
+	SetPlayerSpeed(3,1.5);
+	
+	InstallFont(GetCurrentScriptDirectory() ~ "./fonts/hachicro.ttf");
+	SetCommonData("Genocide", true);
+}
+
+
+@MainLoop
+{
+	fight_respawn++;
+	
+	if(render)
+	{
+		if(!broken)
+		{
+			RenderUnbroken();
+		}
+		else
+		{
+			RenderBroken(shakeoffsetx, shakeoffsety);
+		}
+	}
+	
+	if(GetEnemyBossSceneObjectID() != ID_INVALID)
+	{
+		if(fight_visible)
+		{
+			let path = GetCurrentScriptDirectory() ~ "fight.png";
+			let path_active = GetCurrentScriptDirectory() ~ "fight_active.png";
+			RenderButton(path, path_active, fight_x, fight_y);
+		}
+		
+		if(fight_visible && ButtonCollide(fight_x, fight_y) && GetVirtualKeyState(VK_SHOT) == KEY_PUSH)
+		{
+				fight_visible = false;
+				fight_respawn = 0;
+	
+				SliceEnemy();
+		}
+		
+		if(fight_respawn >= 500)
+		{
+			let w = GetStgFrameWidth();
+			let h = GetStgFrameHeight();
+			
+			let px = GetPlayerX;
+			let py = GetPlayerY;
+		
+			let xoffset = 0;
+			let yoffset = 0;
+
+			while(true)
+			{
+				xoffset = rand(-100, 100);
+				yoffset = rand(-100, 100);
+				
+				if(!(px + xoffset > w || px + xoffset < 0 || py + yoffset > h || py + yoffset < 0))
+				{
+					break;
+				}
+			}
+			
+			fight_x = px + xoffset;
+			fight_y = py + yoffset;
+			
+			fight_visible = true;
+			fight_respawn = 0;
+		}
+		
+		if(fight_visible && ButtonCollide(fight_x, fight_y))
+		{
+			if(!wascol)
+			{
+				PlaySound("select");
+			}
+			
+			wascol = true;
+		}
+		else
+		{
+			wascol = false;
+		}
+	}
+	else
+	{
+		fight_visible = false;
+	}
+	
+	yield;
+}
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_SPELL)
+	{
+		SetScriptResult(false);
+	}
+	case(EV_HIT)
+	{
+		broken = true;
+
+		deathx = GetPlayerX;
+		deathy = GetPlayerY;
+
+		shakeoffsetx = 0;
+		shakeoffsety = 0;
+
+		PlaySound("split");
+		
+		if(GetPlayerLife < 1)
+		{
+			Shatter(80);
+		}
+		else
+		{
+			Shake(60);
+		}
+	}
+	case(EV_PLAYER_REBIRTH)
+	{
+		broken = false;
+		SetPlayerInvincibilityFrame(180);
+		ObjMove_SetX(objPlayer, deathx);
+		ObjMove_SetY(objPlayer, deathy);
+	}
+
+}
+
+task Shake(delay)
+{
+	Wait(delay);
+
+	while(broken)
+	{
+		shakeoffsetx = rand(-1,1);
+		shakeoffsety = rand(-1,1);
+		
+		loop(1)
+		{
+			yield;
+		}
+	}
+	
+	shakeoffsetx = 0;
+	shakeoffsety = 0;
+}
+
+task Shatter(delay)
+{
+	let x = GetPlayerX;
+	let y = GetPlayerY;
+
+	loop(delay)
+	{
+		yield;
+	}
+	
+	render = false;
+	PlaySound("shatter");
+
+	loop(6)
+	{
+		let xv = rand(-4, 4);
+		let yv = rand(-6, 1);
+		let ya = 0.1;
+		
+		CreateHeartShard(x,y,xv,yv,ya);
+	}
+}

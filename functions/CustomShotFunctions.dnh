@@ -1,0 +1,119 @@
+#include "./SoundFunctions.dnh"
+#include "script/default_system/Default_ShotConst.txt"
+
+function Wait(n){loop(n){yield;}}
+
+task SetFlyHoming(bullet_id, delay, pause_delay, homing_count, speed, homing_time)
+{
+	Wait(delay);
+	
+	loop(homing_count)
+	{
+		ObjMove_SetSpeed(bullet_id, 0);
+
+		Wait(pause_delay);
+
+		let angle = GetAngleToPlayer(bullet_id);
+		ObjMove_SetAngle(bullet_id, angle);
+		ObjMove_SetSpeed(bullet_id, speed);
+
+		Wait(homing_time);
+	}
+}
+
+task SetHoming(bullet_id, delay, homing_strength, homing_time)
+{
+	Wait(delay);
+
+	loop(homing_time)
+	{
+		let current_angle = ObjMove_GetAngle(bullet_id);
+		let target_angle = GetAngleToPlayer(bullet_id);
+
+		let up_diff = target_angle - current_angle;
+
+		if(up_diff > 180)
+		{
+			current_angle -= homing_strength;
+		}
+		else if(up_diff < -180)
+		{
+			current_angle += homing_strength;
+		}
+		else if(up_diff > 0)
+		{
+			current_angle += homing_strength;
+		}
+		else
+		{
+			current_angle -= homing_strength;
+		}
+
+		ObjMove_SetAngle(bullet_id, current_angle);
+
+		yield;
+	}
+}
+
+function Walls(x, y, threads, wall_length, wall_spacing, angle, speed, graphic, delay)
+{
+	let thread_inc = 360 / threads;
+	loop(wall_length)
+	{
+		let thread_offset = 0;
+
+		loop(threads)
+		{
+			CreateShotA1(x, y, speed, angle + thread_offset, graphic, delay);
+			thread_offset += thread_inc;
+		}
+
+		angle += wall_spacing;
+	}
+}
+
+function ShootThreads(threads, x, y, speed, angle, graphic, delay)
+{
+	let angle_inc = 360 / threads;
+
+	PlaySound("Shot1", delay, 60);
+
+	loop(threads)
+	{
+		CreateShotA1(x, y, speed, angle, graphic, delay);
+		angle += angle_inc;
+	}
+}
+
+task DiamondShot(x, y, speed, base_angle, angle_inc, wave_count, wave_delay, graphic, delay)
+{
+	Wait(delay);
+	let shot_count = 1;
+
+	loop(wave_count)
+	{
+		let width = shot_count - 1;
+		let angle = base_angle - angle_inc * width / 2;
+
+		PlaySound("BulletWave", 5, 60);
+
+		loop(shot_count)
+		{
+			CreateShotA1(x, y, speed, angle, graphic, 5);
+			angle += angle_inc;
+		}
+
+		shot_count++;
+		Wait(wave_delay);
+	}
+}
+
+task MultipleShots(x, y, speed, speed_n, speed_inc, angle, graphic)
+{
+	loop(speed_n)
+	{
+		CreateShotA1(x, y, speed, angle, graphic, 10);
+
+		speed += speed_inc;
+	}
+}

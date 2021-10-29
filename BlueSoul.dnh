@@ -1,0 +1,228 @@
+#TouhouDanmakufu[Plural]
+#ScriptVersion[3]
+#Title["Blue Soul"]
+#Text[""]
+#System["./system/Custom_System.dnh"]
+#Player["./redsoul/Pacifist.dnh", "./redsoul/Genocide.dnh"]
+#include "./functions/SoundFunctions.dnh"
+#include "./functions/MenuFunctions.dnh"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/RenderFunctions.dnh"
+ 
+ let hold = true;
+ let mus;
+ 
+@Event
+{
+	alternative(GetEventType())
+	case(EV_END_BOSS_STEP)
+	{
+		DeleteShotAll(TYPE_ALL, TYPE_FADE);
+	}
+}
+
+@Initialize
+{
+	let life = 8;
+	SetPlayerLife(life);
+	SetCommonData("MaxLife", life);
+	
+	DeathMusic;
+	Plural;
+	HoldPlayer;
+	
+	InstallFont(GetCurrentScriptDirectory ~ "fonts/8bitoperator_jve.ttf");
+}
+
+@MainLoop
+{
+	yield;
+}
+
+task DeathMusic
+{
+	while(GetPlayerLife > -1)
+	{
+		yield;
+	}
+	
+	ObjSound_Stop(GetCommonData("Music", -1));
+	
+	Wait(160);
+	
+	SetCommonData("Music", PlayMusic("determination", false, 80));
+}
+
+task HoldPlayer
+{
+	let playerx = GetPlayerX;
+	let playery = GetPlayerY;
+	
+	let objPlayer = GetPlayerObjectID;
+	
+	while(hold)
+	{
+		ObjMove_SetX(objPlayer, playerx);
+		ObjMove_SetY(objPlayer, playery);
+		yield;
+	}
+}
+
+function CreateBrokenHeart
+{
+	let path = GetCurrentScriptDirectory() ~ "/img/blue_heart_broken.png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ALPHA);
+	Obj_SetRenderPriority(obj, 0.8);
+	ObjPrim_SetTexture(obj, path);
+	ObjSprite2D_SetSourceRect(obj, 0, 0, 32, 32);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj, GetStgFrameWidth / 2, 90, 1);
+		
+	return obj;
+}
+
+function CreateSparedHeart
+{
+	let path = GetCurrentScriptDirectory() ~ "/img/blue_heart_spare.png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ALPHA);
+	Obj_SetRenderPriority(obj, 0.8);
+	ObjPrim_SetTexture(obj, path);
+	ObjSprite2D_SetSourceRect(obj, 0, 0, 16, 16);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj, GetStgFrameWidth / 2, 90, 1);
+		
+	return obj;
+}
+
+task Plural
+{
+	InstallFont(GetCurrentScriptDirectory ~ "fonts/8bitoperator_jve.ttf");
+
+	//If this isn't here then holding z for too long when retrying selects normal difficulty
+	Wait(2);
+	
+	let difficulty = ShowMenu(["Normal","Hard","Lunatic"], GetStgFrameWidth / 2 - 32, GetStgFrameHeight / 2 - 48);
+	SetCommonData("Difficulty", difficulty);
+	hold = false;
+
+	let dir = GetCurrentScriptDirectory();
+	let obj = ObjEnemyBossScene_Create();
+
+	if(GetCommonData("Genocide", false))
+	{
+		mus = PlayMusic("innertaler", true, 80);
+	} else {
+		mus = PlayMusic("hotredjam", true, 80);
+	}
+
+	SetCommonData("Music", mus);
+
+	SetCommonData("LastAttack", false);
+    
+	ObjEnemyBossScene_Add(obj, 1, dir ~ "./Attack1.dnh");
+	ObjEnemyBossScene_Add(obj, 2, dir ~ "./Attack2.dnh");
+	ObjEnemyBossScene_Add(obj, 3, dir ~ "./Attack3.dnh");
+	ObjEnemyBossScene_Add(obj, 4, dir ~ "./Attack4.dnh");
+	ObjEnemyBossScene_Add(obj, 5, dir ~ "./Attack5.dnh");
+	ObjEnemyBossScene_Add(obj, 6, dir ~ "./Attack6.dnh");
+	ObjEnemyBossScene_Add(obj, 7, dir ~ "./Attack7.dnh");
+	ObjEnemyBossScene_Add(obj, 8, dir ~ "./Attack8.dnh");
+	ObjEnemyBossScene_Add(obj, 9, dir ~ "./Attack9.dnh");
+	ObjEnemyBossScene_Add(obj, 10, dir ~ "./Attack10.dnh");
+	ObjEnemyBossScene_Add(obj, 11, dir ~ "./Attack11.dnh");
+	ObjEnemyBossScene_Add(obj, 12, dir ~ "./Attack12.dnh");
+
+	ObjEnemyBossScene_LoadInThread(obj);
+	ObjEnemyBossScene_Regist(obj);
+	while(!Obj_IsDeleted(obj)){
+			yield;
+	}
+	
+	ObjSound_Stop(GetCommonData("Music", -1));
+	
+	if(GetCommonData("Genocide", false))
+	{
+		let objHeart = CreateBrokenHeart();
+		
+		Shatter(160);
+		Wait(160);
+		
+		Obj_Delete(objHeart);
+		
+		Wait(160);
+	}
+	else
+	{
+		PlaySound("spare",0,100);
+		CreateSparedHeart;
+	}
+	
+  CloseScript(GetOwnScriptID());
+}
+
+task RenderHeartShard(x, y, animframe)
+{
+	let path = GetCurrentScriptDirectory() ~ "/img/heartshards/heartshard_"~IntToString(floor(animframe) % 4)~".png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ALPHA);
+	Obj_SetRenderPriority(obj, 0.8);
+	ObjPrim_SetTexture(obj, path);
+	ObjSprite2D_SetSourceRect(obj,0,0,8,8);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj,floor(x),floor(y),0);
+	loop(2)
+	{
+		yield;
+	}
+	
+	Obj_Delete(obj);
+}
+
+task Shatter(delay)
+{
+	let x = GetStgFrameWidth / 2;
+	let y = 90;
+
+	loop(delay)
+	{
+		yield;
+	}
+	
+	PlaySound("shatter", 0, 100);
+	
+	let amount = 6;
+	
+	loop(amount)
+	{
+		let xv = rand(-4, 4);
+		let yv = rand(-6, 1);
+		let ya = 0.1;
+		
+		CreateHeartShard(x,y,xv,yv,ya);
+	}
+	
+}
+
+task CreateHeartShard(x, y, xv, yv, ya)
+{
+	let animframe = 0;
+	let animinc = 0.05;
+	
+	loop(200)
+	{
+		x += xv;
+		y += yv;
+		yv += ya;
+		
+		RenderHeartShard(x,y,animframe);
+		
+		animframe += animinc;
+		
+		yield;
+	}
+}

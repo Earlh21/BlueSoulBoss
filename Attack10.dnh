@@ -1,0 +1,192 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+
+	SideShots();
+	Sweeps();
+}
+
+@MainLoop
+{
+
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+function Needle(x, y)
+{
+	let angle = AngleTo(x, y, px, py);
+	let speed = 3.5 + difficulty * 0.5;
+	let amount = 5;
+	let delay = 5;
+	let delay_inc = 4;
+
+	PlaySound("famdie", 10, 40);
+
+	loop(amount)
+	{
+		CreateShotA1(x, y, speed, angle, CS_SMALL_BUTTERFLY, delay);
+		delay += delay_inc;
+	}
+}
+
+task Sweeps()
+{
+	Wait(10);
+
+	let graphic = CS_SMALL_BUTTERFLY;
+
+	let whole_period = 120;
+	let gap = 45;
+	let sweep_period = 4 - difficulty;
+	let needle_period = 10;
+
+	let speed = 3 + difficulty * 0.1;
+	let threads = 3 + difficulty;
+	let angle_inc = 10.2451 - difficulty * 0.5;
+	let count = 80;
+
+	let needle_count = 12;
+
+	while(true)
+	{
+		let angle = rand(0, 360);
+
+		loop(count)
+		{
+			ShootThreads(threads, ex, ey, speed, angle, graphic, 10);
+
+			angle += angle_inc;
+			Wait(sweep_period);
+		}
+
+		Wait(gap);
+
+		loop(needle_count)
+		{
+			let x = rand(100, w - 100);
+
+			Needle(x, ey);
+
+			Wait(needle_period);
+		}
+
+		Wait(whole_period);
+	}
+}
+
+task SideShots()
+{
+	Wait(10);
+
+	let graphic = CS_LARGE_BUTTERFLY;
+
+	let period = 300;
+
+	let speed = 0.2;
+	let speed_n = 7;
+	let speed_inc = 0.3;
+
+	let count = 5 + difficulty;
+	let y_start = -50;
+	let y_end = h + 50;
+	let y_inc = (y_end - y_start) / count;
+
+	let angle = 30;
+
+	while(true)
+	{
+		let y = y_start;
+
+		PlaySound("BulletWave", 10, 80);
+
+		loop(count)
+		{
+			MultipleShots(0, y, speed, speed_n, speed_inc, angle, graphic);
+			MultipleShots(w, y + y_inc / 2, speed, speed_n, speed_inc, 180 - angle, graphic);
+
+			y += y_inc;
+		}
+
+		Wait(period);
+	}
+}

@@ -1,0 +1,13 @@
+function LogArray(pretxt, array)
+{
+	let txt = pretxt;
+	let i = 0;
+	while (i < length(array))
+	{
+		txt = txt ~ ToString(array[i]) ~ ",";
+		
+		i++;
+	}
+	
+	WriteLog(txt);
+}

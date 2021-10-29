@@ -1,0 +1,10 @@
+task Obj_DeleteMultiple(objs)
+{
+	let i = 0;
+	while(i < length(objs))
+	{
+		Obj_Delete(objs[i]);
+		
+		i++;
+	}
+}

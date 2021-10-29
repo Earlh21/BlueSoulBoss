@@ -1,0 +1,130 @@
+function Wait(delay)
+{
+	loop(delay)
+	{
+		yield;
+	}
+}
+
+task PlaySound(name)
+{
+	let obj = ObjSound_Create();
+	ObjSound_Load(obj, GetCurrentScriptDirectory() ~ "./snd/"~name~".wav");
+	ObjSound_SetSoundDivision(obj, SOUND_SE);
+	ObjSound_SetLoopEnable(obj, false);
+	ObjSound_Play(obj);
+}
+
+function ButtonCollide(buttonx, buttony)
+{
+	let px = GetPlayerX;
+	let py = GetPlayerY;
+	
+	let xoffset = 0;
+	let yoffset = 0;
+	
+	return px > buttonx - 55 && px < buttonx + 55 && py > buttony - 21 && py < buttony + 21;
+}
+
+task RenderButton(path, path_active, buttonx, buttony)
+{
+	let col = ButtonCollide(buttonx, buttony);
+	
+	let apath = "";
+	if(col)
+	{
+		apath = path_active;
+	}
+	else
+	{
+		apath = path;
+	}
+	
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ADD_ARGB);
+	Obj_SetRenderPriority(obj,0.2);
+	ObjPrim_SetTexture(obj, apath);
+	ObjSprite2D_SetSourceRect(obj, 0, 0, 110, 42);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj, floor(buttonx), floor(buttony), 1);
+	loop(2)
+	{
+		yield;
+	}
+	
+	Obj_Delete(obj);	
+}
+
+task RenderUnbroken
+{
+	let path = GetCurrentScriptDirectory() ~ "heart.png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ADD_ARGB);
+	ObjPrim_SetTexture(obj, path);
+	ObjSprite2D_SetSourceRect(obj, 0, 0, 16, 16);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj, floor(GetPlayerX), floor(GetPlayerY), 1);
+	loop(2)
+	{
+		yield;
+	}
+	
+	Obj_Delete(obj);
+}
+
+task RenderBroken(offsetx, offsety)
+{
+	let path = GetCurrentScriptDirectory() ~ "brokenheart.png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ADD_ARGB);
+	ObjPrim_SetTexture(obj, path);
+	ObjSprite2D_SetSourceRect(obj, 0, 0, 32, 32);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj, floor(GetPlayerX + offsetx), floor(GetPlayerY + offsety), 1);
+	loop(2)
+	{
+		yield;
+	}
+	
+	Obj_Delete(obj);	
+}
+
+task RenderHeartShard(x, y, animframe)
+{
+	let path = GetCurrentScriptDirectory() ~ "/heartshards/heartshard_"~IntToString(floor(animframe) % 4)~".png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(obj, BLEND_ALPHA);
+	ObjPrim_SetTexture(obj, path);
+	ObjSprite2D_SetSourceRect(obj,0,0,8,8);
+	ObjSprite2D_SetDestCenter(obj);
+	
+	ObjRender_SetPosition(obj,floor(x),floor(y),0);
+	loop(2)
+	{
+		yield;
+	}
+	
+	Obj_Delete(obj);
+}
+
+task CreateHeartShard(x, y, xv, yv, ya)
+{
+	let animframe = 0;
+	let animinc = 0.05;
+	
+	loop(200)
+	{
+		x += xv;
+		y += yv;
+		yv += ya;
+		
+		RenderHeartShard(x,y,animframe);
+		
+		animframe += animinc;
+		
+		yield;
+	}
+}

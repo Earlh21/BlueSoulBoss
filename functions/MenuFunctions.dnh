@@ -1,0 +1,92 @@
+#include "../functions/ObjectFunctions.dnh"
+#include "../functions/SoundFunctions.dnh"
+
+function ShowMenu(texts, left, top)
+{	
+	InstallFont(GetCurrentScriptDirectory ~ "/../fonts/8bitoperator_jve.ttf");
+
+	let yinc = 32;
+
+	let i = 0;
+	
+	let objTexts = [];
+	
+	while(i < length(texts))
+	{
+		let objText = CreateTextObject(left, top + i * yinc, "* " ~ texts[i], 255, 255, 255);
+		objTexts = objTexts ~ [objText];
+		
+		i++;
+	}
+	
+	let path = GetCurrentScriptDirectory ~ "../img/heart.png";
+	let objHeart = ObjPrim_Create(OBJ_SPRITE_2D);
+	ObjRender_SetBlendType(objHeart, BLEND_ALPHA);
+	Obj_SetRenderPriority(objHeart, 1);
+	ObjPrim_SetTexture(objHeart, path);
+	ObjSprite2D_SetSourceRect(objHeart, 0, 0, 16, 16);
+	ObjSprite2D_SetDestCenter(objHeart);
+	
+	let sindex = 0;
+	
+	loop
+	{
+		if(GetVirtualKeyState(VK_UP) == KEY_PUSH)
+		{
+			sindex--;
+			PlaySound("select", 0,100);
+		}
+		
+		if(GetVirtualKeyState(VK_DOWN) == KEY_PUSH)
+		{
+			sindex++;
+			PlaySound("select", 0,100);
+		}
+		
+		if(sindex < 0) { sindex = length(texts)-1; }
+		if(sindex > length(texts) - 1) { sindex = 0; }
+		
+		if(GetVirtualKeyState(VK_SHOT) == KEY_PUSH)
+		{		
+			Obj_Delete(objHeart);
+			Obj_DeleteMultiple(objTexts);
+			
+			return sindex;
+		}
+		
+		i = 0;
+		while(i < length(objTexts))
+		{
+			if(i == sindex)
+			{
+				ObjText_SetFontColorTop(objTexts[i],255,255,0);
+				ObjText_SetFontColorBottom(objTexts[i],255,255,0);
+			}
+			else
+			{
+				ObjText_SetFontColorTop(objTexts[i],255,255,255);
+				ObjText_SetFontColorBottom(objTexts[i],255,255,255);
+			}
+			
+			i++;
+		}
+		
+		ObjRender_SetPosition(objHeart, left+8, top + yinc * sindex + 18, 0);
+		
+		yield;
+	}
+}
+
+function CreateTextObject(let mx, let my, let text, let r, let g, let b)
+{
+	let obj = ObjText_Create();
+	ObjText_SetText(obj, text);
+	ObjText_SetFontSize(obj, 32);
+	ObjText_SetFontColorTop(obj, r,g,b);
+	ObjText_SetFontColorBottom(obj, r,g,b);
+	ObjText_SetFontType(obj,"8bitoperator JVE");
+	Obj_SetRenderPriority(obj, 0.1);
+	ObjRender_SetX(obj, mx);
+	ObjRender_SetY(obj, my);
+	return obj;
+}

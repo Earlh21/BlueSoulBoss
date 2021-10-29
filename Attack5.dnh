@@ -1,0 +1,146 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	//Circles(0, 100);
+	Circles(0, GetStgFrameHeight() - 100);
+
+	//Circles(GetStgFrameWidth(), 100);
+	Circles(GetStgFrameWidth(), GetStgFrameHeight() - 100);
+
+	Sweeps();
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+}
+
+@MainLoop
+{
+
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+task Sweeps()
+{
+	let speed = 2.5 + difficulty * 0.5;
+	let graphic = CS_LARGE_BUTTERFLY;
+	let threads = 5;
+	let count = 24 + difficulty * 4;
+	let angle_inc = 7.83 - difficulty * 0.3;
+	let delay = 6;
+
+	Wait(10);
+
+	while(true)
+	{
+		let angle = 0;
+
+		loop(count)
+		{
+			ShootThreads(threads, ex, ey, speed, angle, graphic, 10);
+			
+			angle += angle_inc;
+			Wait(delay);
+		}
+
+		Wait(180);
+	}
+}
+
+task Circles(x, y)
+{
+	let speed = 0.5;
+	let speed2 = 1;
+	let threads = 16 + difficulty * 3;
+	let threads2 = 16 + difficulty * 3;
+	let period = 160 - difficulty * 20;
+	let graphic = CS_SMALL_BUTTERFLY;
+
+	while(true)
+	{
+		let angle = rand(0, 360);
+		let angle2 = rand(0, 360);
+
+		ShootThreads(threads, x, y, speed, angle, graphic, 30);
+		ShootThreads(threads2, x, y, speed2, angle2, graphic, 30);
+
+		Wait(period);
+	}
+}

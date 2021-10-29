@@ -1,0 +1,220 @@
+#TouhouDanmakufu[Player]
+#ScriptVersion[3]	
+#ID["Pacifist Frisk"]
+#Title["Pacifist Frisk"]
+#Text["No fighting. Timeout only."]
+#Image["./bigheart.png"]
+#ReplayName["Frisk"]
+#include "./FriskFunctions.dnh"
+
+let objPlayer = GetPlayerObjectID();
+let objSlowShot = ID_INVALID;
+let current = GetCurrentScriptDirectory();
+
+let render = true;
+let broken = false;
+
+let deathx = 0;
+let deathy = 0;
+
+let shakeoffsetx = 0;
+let shakeoffsety = 0;
+
+let spare_x = 0;
+let spare_y = 0;
+let spare_visible = false;
+let spare_respawn = 300;
+
+let timermin = 200;
+let timermax = 400;
+let wascol = false;
+
+@Initialize
+{	
+	SetForbidPlayerSpell(true);
+	ObjPlayer_AddIntersectionCircleA1(objPlayer, 0, 0, 1, 20);
+
+	SetPlayerSpeed(3,1.5);
+
+	SetCommonData("Genocide", false);
+}
+
+@MainLoop
+{
+	spare_respawn++;
+
+	if(render)
+	{
+		if(!broken)
+		{
+			RenderUnbroken();
+		}
+		else
+		{
+			RenderBroken(shakeoffsetx, shakeoffsety);
+		}
+	}
+	
+	if(GetEnemyBossSceneObjectID() != ID_INVALID)
+	{
+		if(spare_visible)
+		{
+			let path = GetCurrentScriptDirectory() ~ "mercy.png";
+			let path_active = GetCurrentScriptDirectory() ~ "mercy_active.png";
+			RenderButton(path, path_active, spare_x, spare_y);
+		}
+		
+		if(spare_visible && ButtonCollide(spare_x, spare_y) && GetVirtualKeyState(VK_SHOT) == KEY_PUSH)
+		{
+			spare_visible = false;
+			spare_respawn = 0;
+
+			SpareEnemy();
+		}
+		
+		if(spare_respawn >= 500)
+		{
+			let w = GetStgFrameWidth();
+			let h = GetStgFrameHeight();
+			
+			let px = GetPlayerX;
+			let py = GetPlayerY;
+			
+			let xoffset = 0;
+			let yoffset = 0;
+
+			while(true)
+			{
+				xoffset = rand(-100, 100);
+				yoffset = rand(-100, 100);
+				
+				if(!(px + xoffset > w || px + xoffset < 0 || py + yoffset > h || py + yoffset < 0))
+				{
+					break;
+				}
+			}
+			
+			spare_x = px + xoffset;
+			spare_y = py + yoffset;
+			
+			spare_respawn = 0;
+			spare_visible = true;
+		}
+		
+		if(spare_visible && ButtonCollide(spare_x, spare_y))
+		{
+			if(!wascol)
+			{
+				PlaySound("select");
+			}
+			
+			wascol = true;
+		}
+		else
+		{
+			wascol = false;
+		}
+	}
+	else
+	{
+		spare_visible = false;
+	}
+	
+	yield;
+}
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_SPELL)
+	{
+		SetScriptResult(false);
+	}
+	case(EV_HIT)
+	{
+		broken = true;
+
+		deathx = GetPlayerX;
+		deathy = GetPlayerY;
+
+		shakeoffsetx = 0;
+		shakeoffsety = 0;
+
+		PlaySound("split");
+		
+		if(GetPlayerLife < 1)
+		{
+			Shatter(80);
+		}
+		else
+		{
+			Shake(60);
+		}
+	}
+	case(EV_PLAYER_REBIRTH)
+	{
+		broken = false;
+		SetPlayerInvincibilityFrame(180);
+		ObjMove_SetX(objPlayer, deathx);
+		ObjMove_SetY(objPlayer, deathy);
+	}
+}
+
+task Shake(delay)
+{
+	Wait(delay);
+
+	while(broken)
+	{
+		shakeoffsetx = rand(-1,1);
+		shakeoffsety = rand(-1,1);
+		
+		loop(1)
+		{
+			yield;
+		}
+	}
+	
+	shakeoffsetx = 0;
+	shakeoffsety = 0;
+}
+
+function SpareEnemy()
+{
+	let bossObj = GetEnemyBossSceneObjectID();
+	let timer = ObjEnemyBossScene_GetInfo(bossObj, INFO_TIMERF);
+	
+	let timedrop = rand(timermin, timermax);
+	if(timer - timedrop < 2)
+	{
+		timedrop = timer - 2;
+	}
+	
+	let e = timer-timedrop;
+	ObjEnemyBossScene_SetSpellTimer(bossObj, timer - timedrop);
+	
+	PlaySound("dust");
+}
+
+task Shatter(delay)
+{
+	let x = GetPlayerX;
+	let y = GetPlayerY;
+
+	loop(delay)
+	{
+		yield;
+	}
+	
+	render = false;
+	PlaySound("shatter");
+
+	loop(6)
+	{
+		let xv = rand(-4, 4);
+		let yv = rand(-6, 1);
+		let ya = 0.1;
+		
+		CreateHeartShard(x,y,xv,yv,ya);
+	}
+}

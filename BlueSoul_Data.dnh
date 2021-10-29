@@ -1,0 +1,64 @@
+shot_image = "./BlueSoul_ShotSpritesheet.png"
+delay_rect=(378, 0, 389, 11)
+ShotData {
+collision=4
+AnimationData {
+animation_data=(45, 10, 0, 25, 15)
+animation_data=(45, 25, 0, 40, 15)
+}
+id = 1500
+}
+
+ShotData {
+collision=6
+AnimationData {
+animation_data=(45, 62, 0, 84, 22)
+animation_data=(45, 40, 0, 62, 22)
+}
+id = 1501
+}
+
+ShotData {
+collision=6
+AnimationData {
+animation_data=(30, 312, 0, 336, 20)
+animation_data=(30, 288, 0, 312, 20)
+}
+id = 1502
+}
+
+ShotData {
+collision=2
+rect=(944, 0, 953, 9)
+id = 1503
+}
+
+ShotData {
+collision=5
+rect=(184, 0, 196, 14)
+id = 1504
+}
+
+ShotData {
+collision=7
+rect=(904, 0, 944, 40)
+id = 1505
+}
+
+ShotData {
+collision=6
+rect=(542, 0, 564, 22)
+id = 1506
+}
+
+ShotData {
+collision=10
+rect=(852, 0, 904, 52)
+id = 1507
+}
+
+ShotData {
+collision=15
+rect=(749, 0, 852, 104)
+id = 1508
+}

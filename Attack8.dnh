@@ -1,0 +1,191 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+
+	Twinklers();
+}
+
+@MainLoop
+{
+
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+task Twinkle(x, y, angle)
+{
+	let delay = 20;
+	let speed = 0.8;
+	let accel = 0.05;
+
+	let bullet = CreateShotA1(x, y, 0, 0, CS_TWINKLE, 0);
+
+	Wait(delay);
+
+	ObjMove_SetAngle(bullet, angle);
+	ObjMove_SetMaxSpeed(bullet, speed);
+	ObjMove_SetAcceleration(bullet, accel);
+}
+
+task Twinkler(bullet)
+{
+	let period = 140;
+
+	while(!Obj_IsDeleted(bullet))
+	{
+		Twinkle(ObjMove_GetX(bullet), ObjMove_GetY(bullet), ObjMove_GetAngle(bullet));
+
+		Wait(period);
+	}
+}
+
+function CreateTinkler(x, y, angle, ang_vel)
+{
+	let speed = 2;
+	let speed_boost = 0;
+	let speed_boost_inc = 0.2 + difficulty * 0.05;
+	let count = 4;
+
+	loop(count)
+	{
+		let bullet = CreateShotA1(x, y, speed, angle, CS_LARGE_BUTTERFLY, 10);
+		ObjMove_SetAngularVelocity(bullet, ang_vel);
+		Twinkler(bullet);
+		StopAngular(bullet, speed_boost);
+
+		speed_boost += speed_boost_inc;
+	}	
+}
+
+task StopAngular(bullet, speed_boost)
+{
+	Wait(100);
+
+	ObjMove_SetSpeed(bullet, ObjMove_GetSpeed(bullet) + speed_boost);
+	PlaySound("SpellOff", 0, 40);
+
+	Wait(30);
+
+	ObjMove_SetAngularVelocity(bullet, 0);
+}
+
+task Twinklers()
+{
+	Wait(10);
+
+	let threads = 19 + difficulty * 3;
+	let ang_vel = 0.8;
+	let direction = 1;
+	let period = 100 - difficulty * 8;
+
+	while(true)
+	{
+		let angle = rand(0, 360);
+		let angle_inc = 360 / threads;
+
+		loop(threads)
+		{
+			CreateTinkler(100, ey, angle, -ang_vel);
+			CreateTinkler(w - 100, ey, angle, ang_vel);
+
+			angle += angle_inc;
+		}
+
+		PlaySound("Shot1", 10, 40);
+
+		Wait(period);
+
+		angle = rand(0, 360);
+
+		loop(threads)
+		{
+			CreateTinkler(ex, ey, angle, ang_vel * direction);
+
+			angle += angle_inc;
+		}
+
+		PlaySound("Shot1", 10, 40);
+
+		direction *= -1;
+		Wait(period);
+	}
+}

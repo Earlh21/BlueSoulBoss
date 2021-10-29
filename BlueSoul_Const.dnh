@@ -1,0 +1,15 @@
+local {
+	let current = GetCurrentScriptDirectory();
+	let path = current ~ "BlueSoul_Data.dnh";
+	LoadEnemyShotData(path);
+}
+
+let CS_SMALL_BUTTERFLY = 1500;
+let CS_LARGE_BUTTERFLY = 1501;
+let CS_FLY = 1502;
+let CS_TWINKLE = 1503;
+let CS_PELLET = 1504;
+let CS_ICICLE = 1505;
+let CS_BULLET = 1506;
+let CS_SMALL_DEBRIS = 1507;
+let CS_LARGE_DEBRIS = 1508;

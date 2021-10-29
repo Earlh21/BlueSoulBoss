@@ -1,0 +1,227 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+let arena_radius = 120;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+
+	Globe();
+	MainShot();
+}
+
+@MainLoop
+{
+
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+task MainShot()
+{
+	Wait(90);
+
+	while(true)
+	{
+		let x_disp = arena_radius + 40;
+		let y = cy;
+		let r = 60;
+		let r_inc = 50 - difficulty * 10;
+		let r_count = 4 + difficulty;
+
+		let angle_inc_inc = 0.1;
+		let inc_count = 5 + difficulty;
+
+		PlaySound("magic2", 10, 100);
+
+		loop(r_count)
+		{
+			let angle_inc = 0.2;
+
+			loop(inc_count)
+			{
+				Arc(cx - x_disp, y, 270, 180, angle_inc, r);
+				Arc(cx + x_disp, y, 270, 180, -angle_inc, r);
+				angle_inc += angle_inc_inc;
+			}
+
+			r += r_inc;
+		}
+
+		Wait(180);
+
+		let needle_count = 16;
+
+		loop(needle_count)
+		{
+			let x = rand(80, w - 80);
+			let y = ey;
+
+			Needle(x, y);
+
+			Wait(10);
+		}
+	}
+}
+
+function Needle(x, y)
+{
+	let angle = AngleTo(x, y, px, py);
+	let speed = 2.8 + difficulty * 0.15;
+	let amount = 5;
+	let delay = 10;
+	let delay_inc = 4;
+
+	PlaySound("famdie", delay, 40);
+
+	loop(amount)
+	{
+		CreateShotA1(x, y, speed, angle, CS_SMALL_BUTTERFLY, delay);
+		delay += delay_inc;
+	}
+}
+
+task Arc(x, y, angle, arc_size, angle_inc, r)
+{
+	let delay = 10;
+	let count = arc_size / absolute(angle_inc);
+	let bullet = CreateShotA1(-10, -10, 0, 0, CS_LARGE_BUTTERFLY, delay);
+
+	Wait(delay);
+
+	loop(count)
+	{
+		let a_x = x + cos(angle) * r;
+		let a_y = y + sin(angle) * r;
+
+		ObjMove_SetAngle(bullet, angle + 90 * Sign(angle_inc));
+		ObjMove_SetX(bullet, a_x);
+		ObjMove_SetY(bullet, a_y);
+
+		angle += angle_inc;
+
+		yield;
+	}
+
+	let speed = pi() * r * 2 * (absolute(angle_inc) / 360);
+
+	ObjMove_SetSpeed(bullet, speed);
+}
+
+task Globe()
+{
+	Wait(10);
+	while(true)
+	{
+		let angle = rand(0, 360);
+		let r = rand(arena_radius, 340);
+
+		GlobeShot(angle, r);
+
+		Wait(1);
+	}
+}
+
+task GlobeShot(angle, r,)
+{
+	let delay = 60;
+	let life = 600;
+	let bullet = CreateShotA1(cx + cos(angle) * r, cy + sin(angle) * r, 0, 0, CS_LARGE_BUTTERFLY, delay);
+
+	Wait(delay);
+
+	let angle_inc = 1 + rand(-0.2, 0.2);
+
+	loop(life)
+	{
+		let x = cx + cos(angle) * r;
+		let y = cy + sin(angle) * r;
+
+		ObjMove_SetAngle(bullet, angle + 90);
+		ObjMove_SetX(bullet, x);
+		ObjMove_SetY(bullet, y);
+
+		angle += angle_inc;
+
+		yield;
+	}
+
+	Obj_Delete(bullet);
+}

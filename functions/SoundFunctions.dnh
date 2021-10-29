@@ -1,0 +1,63 @@
+task PlaySound(name, delay, volume)
+{
+	loop(delay)
+	{
+		yield;
+	}
+
+	let obj = ObjSound_Create;
+	ObjSound_Load(obj,GetCurrentScriptDirectory ~ "../snd/"~name~".wav");
+	ObjSound_SetSoundDivision(obj, SOUND_SE);
+	ObjSound_SetRestartEnable(obj,false);
+	ObjSound_SetLoopEnable(obj, false);
+	ObjSound_SetVolumeRate(obj, volume);
+	ObjSound_Play(obj);
+}
+
+task PlaySoundPan(name, delay, volume, pan)
+{
+	loop(delay)
+	{
+		yield;
+	}
+
+	let obj = ObjSound_Create;
+	ObjSound_Load(obj,GetCurrentScriptDirectory ~ "../snd/"~name~".wav");
+	ObjSound_SetSoundDivision(obj, SOUND_SE);
+	ObjSound_SetRestartEnable(obj,false);
+	ObjSound_SetLoopEnable(obj, false);
+	ObjSound_SetVolumeRate(obj, volume);
+	ObjSound_SetPanRate(obj, pan);
+	ObjSound_Play(obj);
+}
+
+function PlaySoundPitch(name, delay, volume, pitch)
+{
+
+}
+
+function PlayMusic(name, loopif, volume)
+{
+	let path = GetCurrentScriptDirectory~"../mus/"~name~".mp3";
+	let obj = ObjSound_Create;
+	ObjSound_Load(obj,path);
+	ObjSound_SetSoundDivision(obj, SOUND_BGM);
+	ObjSound_SetRestartEnable(obj, true);
+	ObjSound_SetLoopEnable(obj, loopif);
+	ObjSound_Play(obj);
+	ObjSound_SetVolumeRate(obj,volume);
+	return obj;
+}
+
+function PlayMusicAt(name, loopif, volume, sample)
+{
+	let path = GetCurrentScriptDirectory~"../mus/"~name~".mp3";
+	let obj = ObjSound_Create;
+	ObjSound_Load(obj,path);
+	ObjSound_SetSoundDivision(obj, SOUND_BGM);
+	ObjSound_SetRestartEnable(obj, true);
+	ObjSound_SetLoopEnable(obj, loopif);
+	ObjSound_Play(obj);
+	ObjSound_SetVolumeRate(obj,volume);
+	return obj;
+}

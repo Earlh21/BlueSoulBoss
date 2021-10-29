@@ -1,0 +1,330 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+#include "./functions/ObjectFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+let shakeoffsetx = 0;
+let shakeoffsety = 0;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(40000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(95);
+	}
+}
+@Initialize
+{
+	SetCommonData("LastAttack", true);
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+
+	let imgPath;
+	if(GetCommonData("Genocide", false))
+	{
+		ExplodeCircleP("chiming", 300);
+		ObjSound_Stop(GetCommonData("Music", -1));	
+		PlaySound("split",0,100);
+		Shake();
+		imgPath = GetCurrentScriptDirectory() ~ "/img/blue_heart_broken.png";
+		ObjPrim_SetTexture(objEnemy, imgPath);
+		ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 32, 32); 
+	}
+	else
+	{
+		imgPath = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+		ObjPrim_SetTexture(objEnemy, imgPath);
+		ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+		ExplodeCircleP("chiming", 30);
+	}
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+	
+	Part1();
+}
+
+task RenderCircle(x, y, r1, r2, quality, rgb, blend_mode, priority)
+{
+	let objPolies = CreateCircle(x, y, r1, r2, quality, rgb, blend_mode, priority);
+	
+	Wait(2);
+	
+	Obj_DeleteMultiple(objPolies);
+}
+
+task ExplodeCircle(x, y, r1, r2, rinc, quality, rgb, blend_mode, priority, time)
+{
+	let r = 0;
+
+	loop(time)
+	{
+		RenderCircle(x, y, r1 + r, r2 + r, quality, rgb, blend_mode, priority);
+		
+		r += rinc;
+		yield;
+	}
+}
+
+task ExplodeCircleP(sound, delay)
+{
+	Wait(delay);
+	PlaySound(sound, 0, 80);
+	ExplodeCircle(ex, ey, 0, 10, 10, 60, [0, 0, 255], BLEND_ALPHA, 0.8, 1000);
+}
+
+task Shake()
+{
+	Wait(180);
+	
+	loop(120)
+	{
+		shakeoffsetx = rand(-1,1);
+		shakeoffsety = rand(-1,1);
+		
+		loop(1)
+		{
+			yield;
+		}
+	}
+
+	let imgPath = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgPath); 
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+
+	shakeoffsetx = 0;
+	shakeoffsety = 0;
+	
+	Wait(80);
+	
+	ObjSound_Play(GetCommonData("Music", -1));
+}
+
+
+@MainLoop
+{
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+
+	ObjMove_SetX(objEnemy, cx + shakeoffsetx);
+	ObjMove_SetY(objEnemy, 90 + shakeoffsety);
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 0);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+function Needle(x, y)
+{
+	let angle = AngleTo(x, y, px, py);
+	let speed = 4.5 + difficulty * 1;
+	let amount = 5;
+	let delay = 10;
+	let delay_inc = 4;
+
+	PlaySound("famdie", 10, 40);
+
+	loop(amount)
+	{
+		CreateShotA1(x, y, speed, angle, CS_SMALL_BUTTERFLY, delay);
+		delay += delay_inc;
+	}
+}
+
+function Burst(x, y, delay)
+{
+	let threads = 10 + difficulty * 4;
+	let threads2 = 12 + difficulty * 4;
+	let graphic = CS_LARGE_BUTTERFLY;
+	let graphic2 = CS_SMALL_BUTTERFLY;
+	let speed = 2.1;
+	let speed2 = 1.1;
+
+	PlaySound("water", delay, 40);
+
+	ShootThreads(threads, x, y, speed, rand(0, 5), graphic, delay);
+	ShootThreads(threads2, x, y, speed2, rand(0, 5), graphic2, delay);
+}
+
+task Part1()
+{
+	if(GetCommonData("Genocide", false))
+	{
+		Wait(300);
+	}
+	Wait(90);
+
+	let angle_inc = 3.4152 + difficulty;
+	let speed = 3;
+	let graphic = CS_LARGE_BUTTERFLY;
+	let period = 16 - difficulty * 2;
+	let count = 35;
+	let threads = 18;
+
+	let angle = rand(0, 360);
+	let angle2 = angle;
+
+	loop(count)
+	{
+		ShootThreads(threads, 100, ey, speed, angle, graphic, 10);
+		ShootThreads(threads, w - 100, ey, speed, angle2, graphic, 10);
+
+		angle += angle_inc;
+		angle2 -= angle_inc;
+
+		Wait(period);
+	}
+
+	Wait(60);
+
+	Part2();
+}
+
+task Part2()
+{
+	Wait(10);
+
+	let count = 4;
+	let period = 45;
+
+	let needle_count = 20 + difficulty * 2;
+	let needle_period = 5;
+
+	let gap = 30 - difficulty * 5;
+
+	let burst_count = 8 + difficulty;
+	let burst_period = 30;
+	let delay = 90;
+
+	loop(count)
+	{
+		loop(burst_count)
+		{
+			Burst(GetPlayerX(), GetPlayerY(), delay);
+
+			Wait(burst_period);
+		}
+
+		Wait(gap);
+
+		loop(needle_count)
+		{
+			let x = rand(200, w - 100);
+			let y = 50;
+
+			if(GetPlayerY() < cy)
+			{
+				y = h - 50;
+			}
+			
+			Needle(x, y);
+
+			Wait(needle_period);
+		}
+
+		Wait(period);
+	}
+
+	Part3();
+}
+
+task SweepEm(threads, speed, period, angle_inc, graphic)
+{
+	let angle = 0;
+
+	while(true)
+	{
+		ShootThreads(threads, ex, ey, speed, angle, graphic, 10);
+
+		angle += angle_inc;
+		Wait(period);
+	}
+}
+
+task Part3()
+{
+	Wait(90);
+
+	let threads_a = 20 + difficulty * 5;
+	let threads_b = 10 + difficulty * 5;
+	let threads_c = 0 + difficulty * 5;
+
+	SweepEm(threads_a, 2.2, 7, 360 / threads_a / 2.5, CS_LARGE_BUTTERFLY);
+	SweepEm(threads_b, 1.8, 17, 360 / threads_b / 2.251, CS_SMALL_BUTTERFLY);
+	SweepEm(threads_c, 1.3, 20, 360 / threads_c / 2.251, CS_LARGE_BUTTERFLY);
+
+	while(true)
+	{
+		DeleteShotAll(TYPE_ALL, TYPE_FADE);
+
+		Wait(350);
+	}
+}

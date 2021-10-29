@@ -1,0 +1,125 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 0;
+let frame2 = 0;
+let difficulty;
+
+let triple_x = 0;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+}
+
+@MainLoop
+{
+
+	frame++;
+	frame2++;
+
+	let px = GetPlayerX();
+	let py = GetPlayerY();
+
+	let ex = ObjMove_GetX(objEnemy);
+	let ey = ObjMove_GetY(objEnemy);
+
+	let w = GetStgFrameWidth();
+	let h = GetStgFrameHeight();
+	
+	let cx = w / 2;
+	let cy = h / 2;
+
+	if(frame > 30)
+	{
+		let angle = rand(0, 360);
+		Walls(ex, ey, 8, 3 + difficulty, 6, angle, 2, CS_LARGE_BUTTERFLY, 10);
+		PlaySound("Shot2", 10, 40);
+
+		frame = 0;
+	}
+
+	if(frame2 > 23 - difficulty * 4)
+	{
+		triple_x += rand(90 - difficulty * 10, 110 - difficulty * 10);
+
+		while(triple_x > w)
+		{
+			triple_x -= w;
+		}
+
+		TripleShot(triple_x, ey);
+
+		frame2 = 0;
+	}
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+function TripleShot(x, y)
+{
+	let amount = 3;
+	let delay = 5;
+	let angle = 20;
+	let speed = 3.5;
+	let current_delay = 10;
+
+	PlaySound("Shot3", current_delay, 40);
+
+	loop(amount)
+	{
+		CreateShotA1(x, y, speed, 90, CS_SMALL_BUTTERFLY, current_delay);
+		CreateShotA1(x, y, speed, 90 - angle, CS_SMALL_BUTTERFLY, current_delay);
+		CreateShotA1(x, y, speed, 90 + angle, CS_SMALL_BUTTERFLY, current_delay);
+
+		current_delay += delay;
+	}
+}

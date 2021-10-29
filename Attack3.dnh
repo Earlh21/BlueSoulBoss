@@ -1,0 +1,175 @@
+#TouhouDanmakufu[Single]
+#ScriptVersion[3]
+#Title["Attack 3"]
+#Text[""] 
+#include "script/default_system/Default_ShotConst.txt"
+#include "./functions/CustomShotFunctions.dnh"
+#include "./functions/MathFunctions.dnh"
+#include "./BlueSoul_Const.dnh"
+#include "./functions/RenderFunctions.dnh"
+
+let objEnemy;
+let frame = 120;
+let frame2 = 120;
+let difficulty;
+
+let px;
+let py;
+
+let w;
+let h;
+
+let ex;
+let ey;
+
+let cx;
+let cy;
+
+@Event
+{
+	alternative(GetEventType())
+	case(EV_REQUEST_LIFE)
+	{
+		SetScriptResult(20000);
+	}
+	case(EV_REQUEST_TIMER)
+	{
+		SetScriptResult(50);
+	}
+}
+@Initialize
+{
+	difficulty = GetCommonData("Difficulty", -1);
+
+	objEnemy = ObjEnemy_Create(OBJ_ENEMY_BOSS);
+	ObjEnemy_Regist(objEnemy);
+
+	let imgExRumia = GetCurrentScriptDirectory() ~ "/img/blue_heart.png";
+	ObjPrim_SetTexture(objEnemy, imgExRumia); 
+
+	ObjSprite2D_SetSourceRect(objEnemy, 0, 0, 16, 16); 
+	ObjSprite2D_SetDestCenter(objEnemy); 
+	ObjRender_SetBlendType(objEnemy, BLEND_ALPHA);
+	Obj_SetRenderPriority(objEnemy, 0.8);
+
+	let cx = GetStgFrameWidth() / 2;
+
+	ObjMove_SetX(objEnemy, cx);
+	ObjMove_SetY(objEnemy, 90);
+}
+
+@MainLoop
+{
+
+	frame++;
+
+	px = GetPlayerX();
+	py = GetPlayerY();
+
+	w = GetStgFrameWidth();
+	h = GetStgFrameHeight();
+
+	ex = ObjMove_GetX(objEnemy);
+	ey = ObjMove_GetY(objEnemy);
+	
+	cx = w / 2;
+	cy = h / 2;
+
+	if(frame >= 300)
+	{
+		let curtain_threads = 20 + difficulty * 3;
+		let curtain_amount = 14 + difficulty * 2;
+		let curtain_speed = 4.5;
+
+		CurtainShot(curtain_amount, curtain_threads, curtain_speed);
+
+		let needle_count = 24 + difficulty * 3;
+
+		Needles(needle_count);
+		SweepEchoes(ex, ey, 0, 5, 1, 3, -8, -0.4, 3, 18, 5, CS_LARGE_BUTTERFLY, 150);
+
+		let diamond_angle_inc = 18 - difficulty * 3;
+		let diamond_wave_count = 10 + difficulty;
+
+		DiamondShot(ex, ey, 3, GetAngleToPlayer(objEnemy), diamond_angle_inc, diamond_wave_count, 10, CS_SMALL_BUTTERFLY, 200);
+
+		frame = 0;
+	}
+	
+	ObjEnemy_SetIntersectionCircleToShot(objEnemy, ex, ey, 32);
+	ObjEnemy_SetIntersectionCircleToPlayer(objEnemy, ex, ey, 24);
+
+	if(ObjEnemy_GetInfo(objEnemy, INFO_LIFE) <= 0)
+	{
+		Obj_Delete(objEnemy);
+		CloseScript(GetOwnScriptID());
+		return;
+	}
+	
+	RenderHeart(w/2,h/2);
+	
+	yield;
+}
+
+task Needles(needle_count)
+{
+	loop(needle_count)
+	{
+		let x = rand(0, GetStgFrameWidth());
+		let y = ey;
+		Needle(x, y);
+		Wait(5);
+	}
+}
+
+function Needle(x, y)
+{
+	let angle = AngleTo(x, y, px, py);
+	let speed = 4.5 + difficulty * 1;
+	let amount = 5;
+	let delay = 5;
+	let delay_inc = 4;
+
+	PlaySound("famdie", delay, 40);
+
+	loop(amount)
+	{
+		CreateShotA1(x, y, speed, angle, CS_SMALL_BUTTERFLY, delay);
+		delay += delay_inc;
+	}
+}
+
+task CurtainShot(shot_count, threads, speed)
+{
+		loop(shot_count)
+		{
+			ShootThreads(threads, ex, ey, speed, GetAngleToPlayer(objEnemy), CS_LARGE_BUTTERFLY, 5);
+
+			Wait(5);
+		}
+}
+
+task SweepEchoes(x, y, angle_offset, speed, waves, echoes, echo_angle_inc, echo_speed_inc, threads, angle_inc, rotate_delay, graphic, delay)
+{
+	Wait(delay);
+	loop(waves)
+	{
+		let angle = 0;
+
+		loop(360 / angle_inc)
+		{
+			let echo_angle = 0;
+			let echo_speed = 0;
+
+			loop(echoes)
+			{
+				ShootThreads(threads, x, y, speed + echo_speed, angle + echo_angle + angle_offset, graphic, 10);
+				echo_angle += echo_angle_inc;
+				echo_speed += echo_speed_inc;
+			}
+
+			angle += angle_inc;
+			Wait(rotate_delay);
+		}
+	}
+}
